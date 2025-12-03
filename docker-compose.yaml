@@ -1,42 +1,153 @@
+version: "3.3"
+
 services:
-  frontend:
-    build: ./src/frontend
-    ports:
-      - "8080:8080"
-    depends_on:
-      - cart
-      - checkout
-      - catalog
-    environment:
-      - CART_SERVICE_URL=http://cart:7070
-      - CHECKOUT_SERVICE_URL=http://checkout:5050
-      - CATALOG_SERVICE_URL=http://catalog:3550
-
-  cart:
-    build: ./src/cart
-    ports:
-      - "7070:7070"
-    environment:
-      - REDIS_ADDRESS=redis-cart:6379
-    depends_on:
-      - redis-cart
-
-  checkout:
-    build: ./src/checkout
-    ports:
-      - "5050:5050"
-    environment:
-      - CART_SERVICE_ADDR=http://cart:7070
-      - CATALOG_SERVICE_ADDR=http://catalog:3550
-
-  catalog:
-    build: ./src/catalog
-    ports:
-      - "3550:3550"
-
   redis-cart:
-    image: redis:6.0-alpine
+    image: redis:6-alpine
     container_name: redis-cart
     ports:
       - "6379:6379"
+    networks:
+      - boutique-net
+
+  productcatalogservice:
+    build:
+      context: ./src/productcatalogservice
+    container_name: productcatalogservice
+    ports:
+      - "3550:3550"
+    networks:
+      - boutique-net
+
+  cartservice:
+    build:
+      context: ./src/cartservice
+    container_name: cartservice
+    depends_on:
+      - redis-cart
+    environment:
+      - REDIS_ADDRESS=redis-cart:6379
+    ports:
+      - "3551:3551"
+    networks:
+      - boutique-net
+
+  currencyservice:
+    build:
+      context: ./src/currencyservice
+    container_name: currencyservice
+    ports:
+      - "3552:3552"
+    networks:
+      - boutique-net
+
+  paymentservice:
+    build:
+      context: ./src/paymentservice
+    container_name: paymentservice
+    ports:
+      - "3553:3553"
+    networks:
+      - boutique-net
+
+  shippingservice:
+    build:
+      context: ./src/shippingservice
+    container_name: shippingservice
+    ports:
+      - "3554:3554"
+    networks:
+      - boutique-net
+
+  emailservice:
+    build:
+      context: ./src/emailservice
+    container_name: emailservice
+    ports:
+      - "3555:3555"
+    networks:
+      - boutique-net
+
+  recommendationservice:
+    build:
+      context: ./src/recommendationservice
+    container_name: recommendationservice
+    ports:
+      - "3556:3556"
+    networks:
+      - boutique-net
+
+  adservice:
+    build:
+      context: ./src/adservice
+    container_name: adservice
+    ports:
+      - "3557:3557"
+    networks:
+      - boutique-net
+
+  checkoutservice:
+    build:
+      context: ./src/checkoutservice
+    container_name: checkoutservice
+    depends_on:
+      - cartservice
+      - productcatalogservice
+      - currencyservice
+      - paymentservice
+      - shippingservice
+      - emailservice
+      - recommendationservice
+    ports:
+      - "3558:3558"
+    networks:
+      - boutique-net
+    environment:
+      - PRODUCT_CATALOG_ADDR=productcatalogservice:3550
+      - CART_ADDR=cartservice:3551
+      - CURRENCY_ADDR=currencyservice:3552
+      - PAYMENT_ADDR=paymentservice:3553
+      - SHIPPING_ADDR=shippingservice:3554
+      - EMAIL_ADDR=emailservice:3555
+      - RECOMMENDATION_ADDR=recommendationservice:3556
+      - AD_ADDR=adservice:3557
+
+  frontend:
+    build:
+      context: ./src/frontend
+    container_name: frontend
+    depends_on:
+      - checkoutservice
+      - cartservice
+      - productcatalogservice
+      - currencyservice
+      - paymentservice
+      - shippingservice
+      - emailservice
+      - recommendationservice
+      - adservice
+    ports:
+      - "8080:8080"
+    networks:
+      - boutique-net
+    environment:
+      - PRODUCT_CATALOG_ADDR=productcatalogservice:3550
+      - CART_ADDR=cartservice:3551
+      - CURRENCY_ADDR=currencyservice:3552
+      - CHECKOUT_ADDR=checkoutservice:3558
+      - AD_ADDR=adservice:3557
+
+  loadgenerator:
+    build:
+      context: ./src/loadgenerator
+    container_name: loadgenerator
+    depends_on:
+      - frontend
+    networks:
+      - boutique-net
+    environment:
+      - FRONTEND_ADDR=frontend:8080
+
+networks:
+  boutique-net:
+    driver: bridge
 

@@ -1,7 +1,3 @@
-# docker-compose.yaml
-# Core services only: frontend, cart, checkout, catalog
-# Compatible with Cloud Shell
-
 services:
   frontend:
     build: ./src/frontend
